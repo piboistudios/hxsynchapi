@@ -1,0 +1,13 @@
+# see https://github.com/Aurel300/ammer/blob/47c820f92e58b86ba589c3f0bc79474da2893f61/src/ammer/Config.hx#L33
+# -D target.name=hl
+workspace.hxml
+-lib tink_unittest
+-lib tink_core
+-lib ammer
+-lib anvil
+--macro build.Build.attach()
+-cp tests
+-main RunTests
+
+
+--hl bin/hl/sample.hl

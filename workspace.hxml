@@ -1,0 +1,3 @@
+-D ammer.hl.hlInclude=C:\Users\gabriel.hayes\Desktop\hl-1.10.0-win\include
+-D ammer.hl.hlLibrary=C:\Users\gabriel.hayes\Desktop\hl-1.10.0-win
+-D hxmake-compiler=cl
