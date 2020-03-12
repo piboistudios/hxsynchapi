@@ -10,8 +10,8 @@ TODO:
 - [x] - Mutexes
 - [x] - Critical Sections (needs try access)
 - [x] - SRW Locks
-- [] - Synchronization Barriers
-- [] - Maybe Interlocked Variables?
-- [] - Maybe Interlocked SLists?
-- [] - Expose User Friendly Haxe API
+- [ ] - Synchronization Barriers
+- [ ] - Maybe Interlocked Variables?
+- [ ] - Maybe Interlocked SLists?
+- [ ] - Expose User Friendly Haxe API
 - [x] - Build automation
