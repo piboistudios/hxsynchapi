@@ -210,7 +210,7 @@ LIB_EXPORT void synch_barrier_delete(barrier_p barrier) {
 LIB_EXPORT synch_handle_p mutex_create(const char* name, bool initial_owner) {
     synch_handle_p mutex = (synch_handle_p)malloc(sizeof(synch_handle_t));
     mutex->reporter = get_reporter();
-    mutex->handle = CreateMutex(get_ipc_sd(mutex->reporter), initial_owner, name));
+    mutex->handle = CreateMutex(get_ipc_sd(mutex->reporter), initial_owner, name);
     if(mutex->handle == NULL) {
         report_last(mutex->reporter, "CreateMutex");
     }
@@ -237,10 +237,10 @@ LIB_EXPORT bool srw_try_acquire_exclusive(srw_lock_p srw) {
 LIB_EXPORT bool srw_try_acquire_shared(srw_lock_p srw) {
     return TryAcquireSRWLockShared(srw->lock);
 }
-LIB_EXPORT void srw_release_lock_exclusive(srw_lock_p srw) {
+LIB_EXPORT void srw_release_exclusive(srw_lock_p srw) {
     ReleaseSRWLockExclusive(srw->lock);
 }
-LIB_EXPORT void srw_release_lock_shared(srw_lock_p srw) {
+LIB_EXPORT void srw_release_shared(srw_lock_p srw) {
     ReleaseSRWLockShared(srw->lock);
 }
 LIB_EXPORT void srw_acquire_exclusive(srw_lock_p srw) {

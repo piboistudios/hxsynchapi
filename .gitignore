@@ -1,6 +1,6 @@
 workspace.hxml
-native/**
 native_extensions/**
+native_extensions/**/**
 bin/**
 *.config
 */*.dll

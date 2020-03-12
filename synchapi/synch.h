@@ -55,6 +55,7 @@ LIB_EXPORT void synch_wait_for_handle(synch_handle_p handle, DWORD duration);
 LIB_EXPORT void synch_gather_handle(synch_handle_p s, synch_handle_p t);
 LIB_EXPORT void synch_wait_for_many(synch_handle_p s, DWORD duration, bool wait_all);
 LIB_EXPORT critical_section_p critical_section_init(DWORD spin_count);
+LIB_EXPORT void critical_section_enter(critical_section_p ctx);
 LIB_EXPORT void critical_section_leave(critical_section_p ctx);
 LIB_EXPORT void critical_section_delete(critical_section_p ctx);
 LIB_EXPORT barrier_p  synch_barrier_init(DWORD threads, DWORD spin_count);
@@ -65,8 +66,8 @@ LIB_EXPORT void mutex_release(synch_handle_p mutex);
 LIB_EXPORT srw_lock_p srw_init_lock();
 LIB_EXPORT bool srw_try_acquire_exclusive(srw_lock_p srw);
 LIB_EXPORT bool srw_try_acquire_shared(srw_lock_p srw);
-LIB_EXPORT void srw_release_lock_exclusive(srw_lock_p srw) ;
-LIB_EXPORT void srw_release_lock_shared(srw_lock_p srw) ;
+LIB_EXPORT void srw_release_exclusive(srw_lock_p srw) ;
+LIB_EXPORT void srw_release_shared(srw_lock_p srw) ;
 LIB_EXPORT void srw_acquire_exclusive(srw_lock_p srw) ;
 LIB_EXPORT void srw_acquire_shared(srw_lock_p srw) ;
 #ifdef __cplusplus

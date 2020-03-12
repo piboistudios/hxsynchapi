@@ -26,7 +26,7 @@ class Utils {
             var _a = $asserts;
             if(_a == null)
                 _a = new AssertionBuffer();
-            _a.assert(delta > $expected - $threshhold && delta < $expected + $threshhold);
+            _a.assert(delta >= $expected - $threshhold && delta <= $expected + $threshhold);
             _a.done();
             return _a;
         };
