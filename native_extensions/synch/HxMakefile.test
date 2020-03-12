@@ -1,5 +1,0 @@
--lib Kernel32
--lib advapi32
--src synch.c
--o synch.dll
--win-api
