@@ -12,7 +12,7 @@ char* print_errors(synch_errors_p errors, bool no_reset) {
 	}
     char ret_val[1024 * 16];
     sprintf_s(ret_val, sizeof(ret_val), errors->error_str);
-   // printf("ERROR: %s\r\n", ret_val);
+//    printf("ERROR: %s\r\n", ret_val);
     return ret_val;
 }
 void report(synch_errors_p errors, char* error) {
@@ -20,7 +20,7 @@ void report(synch_errors_p errors, char* error) {
     sprintf_s(errors->errors[errors->num_errors], "%s",error);
     errors->num_errors++;
     errors->has_errors=true;
-    print_errors(errors, false);
+    // print_errors(errors, false);
 }
 void report_last(synch_errors_p errors, char* error) {
     char *e = (char*)malloc(sizeof(char) * 1024);
@@ -162,13 +162,16 @@ LIB_EXPORT void synch_wait_for_many(synch_handle_p handle, DWORD duration, bool 
     }
 }
 
+
 LIB_EXPORT critical_section_p critical_section_init(DWORD spin_count) {
     critical_section_p section = (critical_section_p)malloc(sizeof(critical_section_t));
     section->reporter = get_reporter();
     section->spin_count = spin_count;
+    section->critical_section = (LPCRITICAL_SECTION)malloc(sizeof(CRITICAL_SECTION));
     if(!InitializeCriticalSectionAndSpinCount(section->critical_section, spin_count)) {
+        
         report_last(section->reporter, "InitializeCriticalSectionAndSpinCount");
-    }
+    } 
     return section;
 }
 LIB_EXPORT void critical_section_enter(critical_section_p ctx) {
@@ -180,7 +183,6 @@ LIB_EXPORT void critical_section_leave(critical_section_p ctx) {
 
 LIB_EXPORT void critical_section_delete(critical_section_p ctx) {
     DeleteCriticalSection(ctx->critical_section);
-    free(ctx);
 }
 
 LIB_EXPORT barrier_p  synch_barrier_init(DWORD threads, DWORD spin_count) {

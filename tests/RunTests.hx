@@ -17,6 +17,16 @@ class RunTests {
 		Runner.run(TestBatch.make([new NativeTest()])).handle(Runner.exit);
 	}
 }
+
+enum abstract MagicNumbers(Int) from Int to Int {
+	/**
+		You can improve performance significantly by choosing a small spin count for a critical section of short duration.
+		For example, the heap manager uses a spin count of roughly 4,000 for its per-heap critical sections.
+		See: https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-initializecriticalsectionandspincount
+	**/
+	var SPIN_COUNT = 4000;
+}
+
 @:asserts
 class NativeTest {
 	public function new() {}
@@ -75,6 +85,7 @@ class NativeTest {
 		#elseif master
 		handle.event_reset();
 		return Utils.shouldLast({
+			// asserts = new AssertionBuffer();
 			slave = new sys.io.Process('hl slave.sample.hl');
 			slave.stdin.writeString('$eventId\r\n');
 			inline function printSlaveOutput(output)
@@ -140,42 +151,51 @@ class NativeTest {
 	}
 	#end
 
-	// #if (master || slave2)
-	// public function test_ipc_mutex() {
-	// 	#if slave2
-	// 	Sys.println('%');
-	// 	return Utils.shouldLast({
-	// 		trace('Releasing Mutex in one second');
-	// 		Sys.sleep(1);
-	// 		this.mutex.mutex_release();
-	// 		trace('Mutex released');
-	// 		trace('Shutting down slave');
-	// 	}, 1000, 1000);
-	// 	#elseif master
-	// 	return Utils.shouldLast({
-	// 		asserts = new AssertionBuffer();
-	// 		inline function printSlaveOutput(output)
-	// 			Sys.println('$liStart SLAVE OUTPUT:\r\n' + ~/($)/mg.replace(output, '$1$liStart\t\t'));
-	// 		slave = new sys.io.Process("hl slave2.sample.hl");
-	// 		slave.stdin.writeString('$mutexId\r\n');
-	// 		trace('Sent mutexId $mutexId, now waiting to acquire mutex');
-	// 		Sys.sleep(1);
-	// 		mutex.synch_wait_for_handle(10 * 1000);
-	// 		printSlaveOutput(slave.stdout.readUntil('%'.charCodeAt(0)));
+	var criticalSection:CriticalSection;
 
-	// 		trace('Mutex released.');
-	// 		final output = slave.stdout.readAll().toString();
-	// 		final exitCode = slave.exitCode(true);
-	// 		printSlaveOutput(output);
-	// 		asserts.assert(output.indexOf('Closing slave') != -1);
-	// 		asserts.assert(output.indexOf('0 Failure') != -1);
-	// 		asserts.assert(exitCode == 0);
-	// 	}, 000, 1000, asserts);	
-	// 	#end
-	// }
-	// #end
-	// public function close() {
-	// 	Sys.sleep(3);
-	// 	return assert(true);
-	// }
+	#if master
+	public function test_init_critical_section() {
+		return assert(attempt({
+			criticalSection = synch.SynchLib.critical_section_init(SPIN_COUNT);
+			trace('criticalSection: $criticalSection');
+		}));
+	}
+
+	var criticalValue = 0;
+	var done = 0;
+	function work_in_critical_section(ID:Int, last:Bool, a:AssertionBuffer) {
+		sys.thread.Thread.create(() -> {
+			inline function threadMsg(msg:String)
+				trace('Thread ID $ID: $msg');
+			threadMsg("Attempting to enter critical section");
+			criticalSection.critical_section_enter();
+			threadMsg("Entering crtiical section. Doing work.");
+			criticalValue+= 10;
+			Sys.sleep(1);
+			done++;
+			a.assert(criticalValue == done * 10);
+			threadMsg("Leaving critical section. Work done. done: " + done);
+			criticalSection.critical_section_leave();
+			if (done == 10) {
+				a.assert(criticalValue == 100);
+				a.done();
+				trace('ASSERTS DONE');
+			}
+		});
+	}
+	@:timeout(30000)
+	public function test_critical_section() {
+		var a = new AssertionBuffer();
+		final numThreads = 10;
+		for (i in 0...numThreads)
+			work_in_critical_section(i, i == numThreads - 1, a);
+		return a;
+	}
+
+	public function test_delete_critical_section() {
+		return assert(attempt({
+			criticalSection.critical_section_delete();
+		}));
+	}
+	#end
 }
