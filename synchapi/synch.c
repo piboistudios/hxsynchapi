@@ -100,46 +100,46 @@ synch_errors_p get_reporter() {
     return errors;
 }
 
-LIB_EXPORT synch_handle_p create_event(char* name) {
-    synch_handle_p handle = (synch_handle_p)malloc(sizeof(synch_handle_t));
-    handle->errors = get_reporter();
-    handle->handle = CreateEventA(get_ipc_sd(handle->errors), true, false, name);
-    if(handle->handle == NULL){
-        report_last(handle->errors, "CreateEvent");
+LIB_EXPORT synch_handle_p event_create(char* name) {
+    synch_handle_p evt = (synch_handle_p)malloc(sizeof(synch_handle_t));
+    evt->reporter = get_reporter();
+    evt->handle = CreateEventA(get_ipc_sd(evt->reporter), true, false, name);
+    if(evt->handle == NULL){
+        report_last(evt->reporter, "CreateEvent");
     }
-    return handle;
+    return evt;
 }
-LIB_EXPORT void signal_event(synch_handle_p handle) {
+LIB_EXPORT void event_signal(synch_handle_p handle) {
     if(!SetEvent(handle->handle)) {
-        report_last(handle->errors, "SetEvent");
+        report_last(handle->reporter, "SetEvent");
     }
 }
-LIB_EXPORT void reset_event(synch_handle_p handle) {
+LIB_EXPORT void event_reset(synch_handle_p handle) {
     if(!ResetEvent(handle->handle)) {
-        report_last(handle->errors, "ResetEvent");
+        report_last(handle->reporter, "ResetEvent");
     }
 }
 
-LIB_EXPORT synch_handle_p open_event(char* name) {
-    synch_handle_p handle = (synch_handle_p)malloc(sizeof(synch_handle_t));
-    handle->handle = OpenEventA(SYNCHRONIZE, true, name);
-    if(handle->handle == NULL) {
-        report_last(handle->errors, "OpenEvent");
+LIB_EXPORT synch_handle_p event_open(char* name) {
+    synch_handle_p evt = (synch_handle_p)malloc(sizeof(synch_handle_t));
+    evt->handle = OpenEventA(SYNCHRONIZE, true, name);
+    if(evt->handle == NULL) {
+        report_last(evt->reporter, "OpenEvent");
     }
-    return handle;
+    return evt;
 }
 
-LIB_EXPORT void wait_for_handle(synch_handle_p handle, DWORD duration) {
+LIB_EXPORT void synch_wait_for_handle(synch_handle_p handle, DWORD duration) {
     handle->wait_status = WaitForSingleObject(handle->handle, duration);
     if(handle->wait_status == WAIT_FAILED) {
        // printf("Failed to wait!\r\n");
-        report_last(handle->errors, "WaitForSingleObject");
+        report_last(handle->reporter, "WaitForSingleObject");
     }
     else {
        // printf("Wait successful!\r\n");
     }
 }
-LIB_EXPORT void gather_handle(synch_handle_p s, synch_handle_p t) {
+LIB_EXPORT void synch_gather_handle(synch_handle_p s, synch_handle_p t) {
     if(!s->gather_started) {
         s->capacity = sizeof(HANDLE) * 16;
         s->gathered = (HANDLE*)malloc(s->capacity);
@@ -154,10 +154,100 @@ LIB_EXPORT void gather_handle(synch_handle_p s, synch_handle_p t) {
         s->gather_count++;
     }
 }
-LIB_EXPORT void wait_for_many(synch_handle_p handle, DWORD duration, bool wait_all) {
+LIB_EXPORT void synch_wait_for_many(synch_handle_p handle, DWORD duration, bool wait_all) {
     const HANDLE* handles = handle->gathered;
-    handle->wait_status = WaitForMultipleObjects((handle->capacity / sizeof(HANDLE)), handles, wait_all, duration);
+    handle->wait_status = WaitForMultipleObjects(handle->gather_count, handles, wait_all, duration);
     if(handle->wait_status == WAIT_FAILED) {
-        report_last(handle->errors, "WaitForMultipleObjects");
+        report_last(handle->reporter, "WaitForMultipleObjects");
     }
 }
+
+LIB_EXPORT critical_section_p critical_section_init(DWORD spin_count) {
+    critical_section_p section = (critical_section_p)malloc(sizeof(critical_section_t));
+    section->reporter = get_reporter();
+    section->spin_count = spin_count;
+    if(!InitializeCriticalSectionAndSpinCount(section->critical_section, spin_count)) {
+        report_last(section->reporter, "InitializeCriticalSectionAndSpinCount");
+    }
+    return section;
+}
+LIB_EXPORT void critical_section_enter(critical_section_p ctx) {
+    EnterCriticalSection(ctx->critical_section);
+}
+LIB_EXPORT void critical_section_leave(critical_section_p ctx) {
+    LeaveCriticalSection(ctx->critical_section);
+}
+
+LIB_EXPORT void critical_section_delete(critical_section_p ctx) {
+    DeleteCriticalSection(ctx->critical_section);
+    free(ctx);
+}
+
+LIB_EXPORT barrier_p  synch_barrier_init(DWORD threads, DWORD spin_count) {
+    barrier_p barrier = (barrier_p)malloc(sizeof(barrier_t));
+    barrier->reporter = get_reporter();
+    barrier->threads = threads;
+    barrier->spin_count = spin_count;
+    if(!InitializeSynchronizationBarrier(barrier->barrier, threads, spin_count)) {
+        report_last(barrier->reporter, "InitializeSynchronizationBarrier");
+    }
+    return barrier;
+}
+LIB_EXPORT void synch_barrier_enter(barrier_p barrier, bool spin_only, bool block_only) {
+    DWORD flags;
+    if(spin_only) flags = SYNCHRONIZATION_BARRIER_FLAGS_SPIN_ONLY;
+    else if(block_only) flags = SYNCHRONIZATION_BARRIER_FLAGS_BLOCK_ONLY;
+    if(!EnterSynchronizationBarrier(barrier->barrier, flags)) {
+        report_last(barrier->reporter, "EnterSynchronizationBarrier");
+    }
+}
+
+LIB_EXPORT void synch_barrier_delete(barrier_p barrier) {
+    if(!DeleteSynchronizationBarrier(barrier->barrier)) {
+        report_last(barrier->reporter, "DeleteSynchronizationBarrier");
+    }
+}
+LIB_EXPORT synch_handle_p mutex_create(const char* name, bool initial_owner) {
+    synch_handle_p mutex = (synch_handle_p)malloc(sizeof(synch_handle_t));
+    mutex->reporter = get_reporter();
+    mutex->handle = CreateMutex(get_ipc_sd(mutex->reporter), initial_owner, name));
+    if(mutex->handle == NULL) {
+        report_last(mutex->reporter, "CreateMutex");
+    }
+    return mutex;
+}
+LIB_EXPORT void mutex_release(synch_handle_p mutex) {
+    if(!ReleaseMutex(mutex->handle)) {
+        report_last(mutex->reporter, "ReleaseMutex");
+    }
+}
+
+LIB_EXPORT srw_lock_p srw_init_lock() {
+    srw_lock_p srw = (srw_lock_p)malloc(sizeof(srw_lock_t));
+    srw->reporter =get_reporter();
+    InitializeSRWLock(srw->lock);
+    if(srw->lock == NULL) {
+        report_last(srw->reporter, "InitializeSRWLock");
+    }
+    return srw;
+}
+LIB_EXPORT bool srw_try_acquire_exclusive(srw_lock_p srw) {
+    return TryAcquireSRWLockExclusive(srw->lock);
+}
+LIB_EXPORT bool srw_try_acquire_shared(srw_lock_p srw) {
+    return TryAcquireSRWLockShared(srw->lock);
+}
+LIB_EXPORT void srw_release_lock_exclusive(srw_lock_p srw) {
+    ReleaseSRWLockExclusive(srw->lock);
+}
+LIB_EXPORT void srw_release_lock_shared(srw_lock_p srw) {
+    ReleaseSRWLockShared(srw->lock);
+}
+LIB_EXPORT void srw_acquire_exclusive(srw_lock_p srw) {
+    AcquireSRWLockExclusive(srw->lock);
+}
+LIB_EXPORT void srw_acquire_shared(srw_lock_p srw) {
+    AcquireSRWLockShared(srw->lock);
+}
+
+

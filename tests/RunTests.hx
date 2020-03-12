@@ -27,11 +27,11 @@ class NativeTest {
         return assert(attempt({
             #if master
             eventId = Std.string(Std.random(10000));
-            handle = synch.SynchLib.create_event("Local\\" + eventId);
+            handle = synch.SynchLib.event_create("Local\\" + eventId);
             trace('Created event ID $eventId');
             #elseif slave
             eventId = Sys.stdin().readLine();
-            handle = synch.SynchLib.open_event("Local\\" + eventId);
+            handle = synch.SynchLib.event_open("Local\\" + eventId);
             trace('Opened existing event ID $eventId');
             #end
         }));
@@ -42,9 +42,9 @@ class NativeTest {
             Thread.create(() -> {
                 Sys.sleep(5);
                 trace('Signaling event@${Date.now()}');
-                handle.signal_event();
+                handle.event_signal();
             });
-            handle.wait_for_handle(10 * 1000);
+            handle.synch_wait_for_handle(10 * 1000);
         }, 5000, 10);
     }
     #end
@@ -55,7 +55,7 @@ class NativeTest {
         return Utils.shouldLast({
             Sys.println('Waiting for event to trigger');
             Sys.println('%');
-            handle.wait_for_handle(10 * 1000);
+            handle.synch_wait_for_handle(10 * 1000);
             sys.thread.Thread.create(() -> {
 
                 Sys.println('Event triggered');
@@ -66,7 +66,7 @@ class NativeTest {
             // Sys.
         }, 2000, 500);
         #elseif master
-        handle.reset_event();
+        handle.event_reset();
         return Utils.shouldLast({
             slave = new sys.io.Process('hl slave.sample.hl');
             slave.stdin.writeString('$eventId\r\n');
@@ -80,7 +80,7 @@ class NativeTest {
             });
             Sys.sleep(1);
             Sys.println('Signaling event');
-            handle.signal_event();
+            handle.event_signal();
             final finalOutput = slave.stdout.readAll().toString();
             printSlaveOutput(finalOutput);
             final exitCode = slave.exitCode(true);
