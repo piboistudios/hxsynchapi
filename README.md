@@ -7,10 +7,10 @@ It is a WIP.
 TODO:
 - [x] - Create Haxe Native FFI Proxy
 - [x] - Events
-- [x] - Mutexes
+- [x] - Mutexes (needs working test.. need some shared I/O/IPC message passing)
 - [x] - Critical Sections (needs try access)
 - [x] - SRW Locks
-- [ ] - Synchronization Barriers
+- [ ] - Synchronization Barriers (needs test)
 - [ ] - Maybe Interlocked Variables?
 - [ ] - Maybe Interlocked SLists?
 - [ ] - Expose User Friendly Haxe API
