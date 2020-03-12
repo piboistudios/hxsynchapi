@@ -2,9 +2,9 @@ all: ammer_synch.hdll
 	@:
 
 ammer_synch.hdll: ammer_synch.hl.obj
-	cl /LD ammer_synch.hl.obj /DLIBHL_EXPORTS /link /OUT:ammer_synch.hdll /LIBPATH:"C:\Users\gabriel.hayes\Desktop\hl-1.10.0-win" libhl.lib /LIBPATH:"C:/Users/gabriel.hayes/Desktop/test/hxsynchapi/native_extensions/synch" synch.lib
+	cl /LD ammer_synch.hl.obj /DLIBHL_EXPORTS /link /OUT:ammer_synch.hdll /LIBPATH:"C:\Users\gabri\Desktop\hl-1.10.0-win" libhl.lib /LIBPATH:"C:/Users/gabri/Desktop/New folder/synchapi/native_extensions/synch" synch.lib
 
 ammer_synch.hl.obj: ammer_synch.hl.c
-	cl /c ammer_synch.hl.c /I "C:/Users/gabriel.hayes/Desktop/test/hxsynchapi/native_extensions/synch" /I "C:\Users\gabriel.hayes\Desktop\hl-1.10.0-win\include"
+	cl /c ammer_synch.hl.c /I "C:/Users/gabri/Desktop/New folder/synchapi/native_extensions/synch" /I "C:\Users\gabri\Desktop\hl-1.10.0-win\include"
 
 .PHONY: all

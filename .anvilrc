@@ -4,7 +4,7 @@
             "ammerLib": "synch",
             "nativePath": "synchapi",
             "hxMakefile": "HxMakefile.test",
-            "disableCache": true
+            "disableCache": false
         }
     ]
 }

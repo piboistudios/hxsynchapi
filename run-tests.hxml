@@ -8,6 +8,9 @@ workspace.hxml
 --macro build.Build.attach()
 -cp tests
 -main RunTests
-
-
---hl bin/hl/sample.hl
+--each
+-D master
+--hl bin/hl/master.sample.hl
+--next
+-D slave
+--hl bin/hl/slave.sample.hl
