@@ -9,6 +9,7 @@ class SynchLib extends Library<"synch"> {
   public static function critical_section_init(spinCount:UInt):CriticalSection;
   public static function synch_barrier_init(threads:UInt, spinCount:UInt):SynchronizationBarrier;
   public static function mutex_create(name:String, initialOwner:Bool):SynchronizationHandle;
+  public static function mutex_open(name:String, initialOwner:Bool):SynchronizationHandle;
   public static function synch_gather_handle(a:SynchronizationHandle, b:SynchronizationHandle):Void;
   public static function srw_init_lock():SrwLock;
 }

@@ -216,6 +216,15 @@ LIB_EXPORT synch_handle_p mutex_create(const char* name, bool initial_owner) {
     }
     return mutex;
 }
+LIB_EXPORT synch_handle_p mutex_open(const char* name, bool initial_owner) {
+    synch_handle_p mutex = (synch_handle_p)malloc(sizeof(synch_handle_t));
+    mutex->reporter = get_reporter();
+    mutex->handle = OpenMutex(SYNCHRONIZE, initial_owner, name);
+    if(mutex->handle == NULL) {
+        report_last(mutex->reporter, "CreateMutex");
+    }
+    return mutex;
+}
 LIB_EXPORT void mutex_release(synch_handle_p mutex) {
     if(!ReleaseMutex(mutex->handle)) {
         report_last(mutex->reporter, "ReleaseMutex");

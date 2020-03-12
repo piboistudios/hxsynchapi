@@ -17,14 +17,15 @@ class RunTests {
 		Runner.run(TestBatch.make([new NativeTest()])).handle(Runner.exit);
 	}
 }
-
+@:asserts
 class NativeTest {
 	public function new() {}
 
 	var handle:SynchronizationHandle;
 	var eventId:String;
 	var asserts = new AssertionBuffer();
-    #if (master || slave)
+
+	#if (master || slave)
 	public function test_create_event() {
 		return assert(attempt({
 			#if master
@@ -37,8 +38,8 @@ class NativeTest {
 			trace('Opened existing event ID $eventId');
 			#end
 		}));
-    }
-    #end
+	}
+	#end
 
 	#if master
 	public function event_wait_handle() {
@@ -78,11 +79,10 @@ class NativeTest {
 			slave.stdin.writeString('$eventId\r\n');
 			inline function printSlaveOutput(output)
 				Sys.println('$liStart SLAVE OUTPUT:\r\n' + ~/($)/mg.replace(output, '$1$liStart\t\t'));
-			sys.thread.Thread.create(() -> {
-				Sys.println('Sent $eventId to slave, waiting 1 seconds');
-				final initialOutput = slave.stdout.readUntil('%'.charCodeAt(0)).toString();
-				printSlaveOutput(initialOutput);
-			});
+			Sys.println('Sent $eventId to slave, waiting 1 seconds');
+			final initialOutput = slave.stdout.readUntil('%'.charCodeAt(0)).toString();
+			printSlaveOutput(initialOutput);
+
 			Sys.sleep(1);
 			Sys.println('Signaling event');
 			handle.event_signal();
@@ -95,35 +95,87 @@ class NativeTest {
 		}, 2000, 1000, asserts);
 		#end
 	}
-    #end
-    var mutex:SynchronizationHandle;
-    var mutexId:String;
-    #if master
-    public function test_create_mutex() {
-        return assert(attempt({
-            this.mutexId = Std.string(Std.random(10000));
-            this.mutex = synch.SynchLib.mutex_create('Global\\$mutexId', false);
-        }));
-    }
-    #end
-    #if master
-    public function mutex_wait_handle() {
-        return Utils.shouldLast({
-            Thread.create(() -> {
-                mutex.synch_wait_for_handle(10 * 1000);
-                trace('$liStart Thread - Acquired handle; releasing in 1 second');
-                Sys.sleep(1);
-                trace('$liStart Thread - releasing handle');
-                mutex.mutex_release();
-            });
-            Sys.sleep(0.1);
-            trace('Process - Waiting for handle.');
-            mutex.synch_wait_for_handle(10 * 1000);
-            trace('Process - Acquired handle; releasing in 1 second');
-            Sys.sleep(1);
-            trace('Process - releasing handle');
-            mutex.mutex_release();
-        }, 2000, 1000);
-    }
-    #end
+	#end
+
+	var mutex:SynchronizationHandle;
+	var mutexId:String;
+
+	#if master
+	public function test_create_mutex() {
+		return assert(attempt({
+			this.mutexId = Std.string(Std.random(10000));
+			this.mutex = synch.SynchLib.mutex_create('Global\\$mutexId', false);
+		}));
+	}
+	#end
+
+	#if slave2
+	public function test_open_mutex() {
+		return assert(attempt({
+			this.mutexId = Sys.stdin().readLine();
+			this.mutex = synch.SynchLib.mutex_open('Global\\$mutexId', true);
+			trace('my mutex: $mutex ($mutexId)');
+		}));
+	}
+	#end
+
+	#if master
+	public function mutex_wait_handle() {
+		return Utils.shouldLast({
+			Thread.create(() -> {
+				mutex.synch_wait_for_handle(10 * 1000);
+				trace('$liStart Thread - Acquired handle; releasing in 1 second');
+				Sys.sleep(1);
+				trace('$liStart Thread - releasing handle');
+				mutex.mutex_release();
+			});
+			Sys.sleep(0.1);
+			trace('Process - Waiting for handle.');
+			mutex.synch_wait_for_handle(10 * 1000);
+			trace('Process - Acquired handle; releasing in 1 second');
+			Sys.sleep(1);
+			trace('Process - releasing handle');
+			mutex.mutex_release();
+		}, 2000, 1000);
+	}
+	#end
+
+	// #if (master || slave2)
+	// public function test_ipc_mutex() {
+	// 	#if slave2
+	// 	Sys.println('%');
+	// 	return Utils.shouldLast({
+	// 		trace('Releasing Mutex in one second');
+	// 		Sys.sleep(1);
+	// 		this.mutex.mutex_release();
+	// 		trace('Mutex released');
+	// 		trace('Shutting down slave');
+	// 	}, 1000, 1000);
+	// 	#elseif master
+	// 	return Utils.shouldLast({
+	// 		asserts = new AssertionBuffer();
+	// 		inline function printSlaveOutput(output)
+	// 			Sys.println('$liStart SLAVE OUTPUT:\r\n' + ~/($)/mg.replace(output, '$1$liStart\t\t'));
+	// 		slave = new sys.io.Process("hl slave2.sample.hl");
+	// 		slave.stdin.writeString('$mutexId\r\n');
+	// 		trace('Sent mutexId $mutexId, now waiting to acquire mutex');
+	// 		Sys.sleep(1);
+	// 		mutex.synch_wait_for_handle(10 * 1000);
+	// 		printSlaveOutput(slave.stdout.readUntil('%'.charCodeAt(0)));
+
+	// 		trace('Mutex released.');
+	// 		final output = slave.stdout.readAll().toString();
+	// 		final exitCode = slave.exitCode(true);
+	// 		printSlaveOutput(output);
+	// 		asserts.assert(output.indexOf('Closing slave') != -1);
+	// 		asserts.assert(output.indexOf('0 Failure') != -1);
+	// 		asserts.assert(exitCode == 0);
+	// 	}, 000, 1000, asserts);	
+	// 	#end
+	// }
+	// #end
+	// public function close() {
+	// 	Sys.sleep(3);
+	// 	return assert(true);
+	// }
 }

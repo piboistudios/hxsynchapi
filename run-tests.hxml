@@ -14,3 +14,6 @@ workspace.hxml
 --next
 -D slave
 --hl bin/hl/slave.sample.hl
+--next
+-D slave2
+--hl bin/hl/slave2.sample.hl

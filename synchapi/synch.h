@@ -62,6 +62,7 @@ LIB_EXPORT barrier_p  synch_barrier_init(DWORD threads, DWORD spin_count);
 LIB_EXPORT void synch_barrier_enter(barrier_p barrier, bool spin_only, bool block_only) ;
 LIB_EXPORT void synch_barrier_delete(barrier_p barrier);
 LIB_EXPORT synch_handle_p mutex_create(const char* name, bool initial_owner);
+LIB_EXPORT synch_handle_p mutex_open(const char* name, bool initial_owner);
 LIB_EXPORT void mutex_release(synch_handle_p mutex);
 LIB_EXPORT srw_lock_p srw_init_lock();
 LIB_EXPORT bool srw_try_acquire_exclusive(srw_lock_p srw);
