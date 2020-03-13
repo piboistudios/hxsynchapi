@@ -277,4 +277,35 @@ class NativeTest {
         
     }
     #end
+    #if master
+	public function test_srw() {
+		asserts = new AssertionBuffer();
+		var lock:SrwLock = synch.SynchLib.srw_init_lock();
+		final now = Date.now();
+		sys.thread.Thread.create(() -> {
+			lock.acquire_exclusive();
+			final data = [];
+			for(i in 0...Std.int(Std.random(50))) {
+				data.push({
+					name: 'test-$i',
+					id: i,
+					created: Date.now().getTime()
+				});
+			}
+			final dataJson = haxe.Json.stringify(data, null, '\t');
+			sys.io.File.saveContent('./srw-test.txt', dataJson);
+			sys.io.File.saveContent('./srw-test.hash', haxe.crypto.Sha1.encode(dataJson));
+			lock.release_exclusive();
+		});
+		sys.thread.Thread.create(() -> {
+			Sys.sleep(0.1);
+			lock.acquire_shared();
+			final content = sys.io.File.getContent('./srw-test.txt');
+			asserts.assert(sys.io.File.getContent('./srw-test.hash') == haxe.crypto.Sha1.encode(content));
+			asserts.done();
+			lock.release_shared();
+		});
+		return asserts;
+	}
+	#end
 }
