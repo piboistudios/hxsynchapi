@@ -158,7 +158,7 @@ class NativeTest {
         final content = sys.io.File.getContent('./data.txt');
         sys.io.File.saveContent('./data.txt', content + content);
         mutex.mutex_release();
-        return asasdfasdfassert(sys.io.File.getContent('./data.txt') == 'some data\r\nsome data\r\n');
+        return assert(sys.io.File.getContent('./data.txt') == 'some data\r\nsome data\r\n');
         #elseif master
         mutex.synch_wait_for_handle(10 * 1000);
         sys.io.File.saveContent('./data.txt', 'some data\r\n');
