@@ -60,7 +60,7 @@ class NativeTest {
 				handle.event_signal();
 			});
 			handle.synch_wait_for_handle(10 * 1000);
-		}, 5000, 10);
+		}, 5000, 1000);
 	}
 	#end
 
@@ -160,35 +160,36 @@ class NativeTest {
 			trace('criticalSection: $criticalSection');
 		}));
 	}
-
 	var criticalValue = 0;
 	var done = 0;
-	function work_in_critical_section(ID:Int, last:Bool, a:AssertionBuffer) {
+	var numThreads = 50;
+	function work_in_critical_section(ID:Int, a:AssertionBuffer) {
 		sys.thread.Thread.create(() -> {
 			inline function threadMsg(msg:String)
 				trace('Thread ID $ID: $msg');
-			threadMsg("Attempting to enter critical section");
+
+			// Sys.sleep(ID/5);
+			// threadMsg("Attempting to enter critical section");
 			criticalSection.critical_section_enter();
-			threadMsg("Entering crtiical section. Doing work.");
+			// threadMsg("Entering crtiical section. Doing work.");
+			Sys.sleep(Std.random(100)/500);
 			criticalValue+= 10;
-			Sys.sleep(1);
 			done++;
 			a.assert(criticalValue == done * 10);
-			threadMsg("Leaving critical section. Work done. done: " + done);
+			// threadMsg("Leaving critical section. Work done. done: " + done);
+			final isLastOut = done == numThreads;
 			criticalSection.critical_section_leave();
-			if (done == 10) {
-				a.assert(criticalValue == 100);
-				a.done();
-				trace('ASSERTS DONE');
+			if (isLastOut) {
+				a.assert(criticalValue == numThreads * 10);
+				a.done();	
 			}
 		});
 	}
 	@:timeout(30000)
 	public function test_critical_section() {
 		var a = new AssertionBuffer();
-		final numThreads = 10;
 		for (i in 0...numThreads)
-			work_in_critical_section(i, i == numThreads - 1, a);
+			work_in_critical_section(i, a);
 		return a;
 	}
 
@@ -196,6 +197,37 @@ class NativeTest {
 		return assert(attempt({
 			criticalSection.critical_section_delete();
 		}));
+	}
+	#end
+	#if master
+	public function test_srw() {
+		asserts = new AssertionBuffer();
+		var lock:SrwLock = synch.SynchLib.srw_init_lock();
+		final now = Date.now();
+		sys.thread.Thread.create(() -> {
+			lock.acquire_exclusive();
+			final data = [];
+			for(i in 0...Std.int(Std.random(50))) {
+				data.push({
+					name: 'test-$i',
+					id: i,
+					created: Date.now().getTime()
+				});
+			}
+			final dataJson = haxe.Json.stringify(data, null, '\t');
+			sys.io.File.saveContent('./srw-test.txt', dataJson);
+			sys.io.File.saveContent('./srw-test.hash', haxe.crypto.Sha1.encode(dataJson));
+			lock.release_exclusive();
+		});
+		sys.thread.Thread.create(() -> {
+			Sys.sleep(0.1);
+			lock.acquire_shared();
+			final content = sys.io.File.getContent('./srw-test.txt');
+			asserts.assert(sys.io.File.getContent('./srw-test.hash') == haxe.crypto.Sha1.encode(content));
+			asserts.done();
+			lock.release_shared();
+		});
+		return asserts;
 	}
 	#end
 }
