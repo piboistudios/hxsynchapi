@@ -82,7 +82,7 @@ class NativeTest {
 			});
 			Sys.sleep(1);
 			// Sys.
-		}, 2000, 100);
+		}, 2000, 1000);
 		#elseif master
 		handle.event_reset();
 		return Utils.shouldLast({
@@ -184,28 +184,39 @@ class NativeTest {
 	#if master
 	public function test_init_critical_section() {
 		return assert(attempt({
-			criticalSection = synch.SynchLib.critical_section_init(SPIN_COUNT);
+			criticalSection = synch.SynchLib.critical_section_init(0);
 			trace('criticalSection: $criticalSection');
 		}));
 	}
 
 	var criticalValue = 0;
-	var done = 0;
-	function work_in_critical_section(ID:Int, last:Bool, a:AssertionBuffer) {
+    var done = 0;
+    var numThreads = 50;
+    var assertions:Array<Array<Dynamic>> = [];
+	function work_in_critical_section(ID:Int, a:AssertionBuffer) {
 		sys.thread.Thread.create(() -> {
 			inline function threadMsg(msg:String)
 				trace('Thread ID $ID: $msg');
-			threadMsg("Attempting to enter critical section");
+			// threadMsg("Attempting to enter critical section");
 			criticalSection.critical_section_enter();
-			threadMsg("Entering crtiical section. Doing work.");
+			// threadMsg("Entering crtiical section. Doing work.");
 			criticalValue+= 10;
-			Sys.sleep(0.1);
 			done++;
-			a.assert(criticalValue == done * 10);
-			threadMsg("Leaving critical section. Work done. done: " + done);
-			criticalSection.critical_section_leave();
-			if (done == 10) {
-				a.assert(criticalValue == 100);
+            final lastOut = done == numThreads;
+            trace('foo');
+            // threadMsg("Leaving critical section. Work done. done: " + done);
+            // threadMsg('$lastOut');
+            Sys.sleep(Std.random(100)/500);
+            // a.assert(criticalValue == done * 10);
+            assertions.push(['Thread $ID: criticalValue == done * 10 ($criticalValue == $done * 10)', criticalValue == done * 10]);
+            criticalSection.critical_section_leave();
+            // threadMsg('left critical section');
+			if (lastOut) {
+                for(assertion in assertions){
+                    trace(assertion[0]);
+                    a.assert(assertion[1] == true);
+                }
+				a.assert(criticalValue == numThreads * 10);
 				a.done();
 			}
 		});
@@ -213,9 +224,8 @@ class NativeTest {
 	@:timeout(30000)
 	public function test_critical_section() {
 		var a = new AssertionBuffer();
-		final numThreads = 10;
 		for (i in 0...numThreads)
-			work_in_critical_section(i, i == numThreads - 1, a);
+			work_in_critical_section(i, a);
 		return a;
 	}
 
@@ -245,13 +255,15 @@ class NativeTest {
                 msg('Entering barrier');
                 barrier.synch_barrier_enter(false, false);
                 msg('Passing barrier');
-                if(delay == 0) asserts.assert(counter == 10);
+                final counterAfterBarrier = counter;
+                // if(delay == 0) asserts.assert(counter == 10);
                 Sys.sleep(delay/10);
                 msg('Decrementing counter');
                 counter--;
                 if(delay == 9) {
                     msg('Last out. Cleaning up');
                     barrier.synch_barrier_delete();
+                    asserts.assert(counterAfterBarrier == 10);
                     asserts.assert(counter == 0);
                     asserts.done();
                 }

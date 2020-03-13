@@ -181,6 +181,7 @@ LIB_EXPORT bool critical_section_try_enter(critical_section_p ctx) {
     TryEnterCriticalSection(ctx->critical_section);
 }
 LIB_EXPORT void critical_section_leave(critical_section_p ctx) {
+    // printf("Leaving critical section\r\n");
     LeaveCriticalSection(ctx->critical_section);
 }
 
