@@ -3,8 +3,7 @@
         {
             "ammerLib": "synch",
             "nativePath": "synchapi",
-            "hxMakefile": "HxMakefile.test",
-            "disableCache": false
+            "hxMakefile": "HxMakefile.test"
         }
     ]
 }

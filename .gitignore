@@ -23,4 +23,5 @@ bin/**
 */*/*.lib
 */*/*.pdb
 */*/*.ipdb
-*/*/*.obj
+*/*/*.obj
+./anvil.lastbuild.txt
