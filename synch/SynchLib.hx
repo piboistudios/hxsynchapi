@@ -24,6 +24,7 @@ class SynchronizationHandle extends Pointer<"synch_handle_t", SynchLib> {
 // @:ammer.nativePrefix("critical_section_")
 class CriticalSection extends Pointer<"critical_section_t", SynchLib> {
   public function critical_section_enter(_:This):Void;
+  public function critical_section_try_enter(_:This):Bool;
   public function critical_section_leave(_:This):Void;
   public function critical_section_delete(_:This):Void;
 }

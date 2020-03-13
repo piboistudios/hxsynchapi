@@ -177,6 +177,9 @@ LIB_EXPORT critical_section_p critical_section_init(DWORD spin_count) {
 LIB_EXPORT void critical_section_enter(critical_section_p ctx) {
     EnterCriticalSection(ctx->critical_section);
 }
+LIB_EXPORT bool critical_section_try_enter(critical_section_p ctx) {
+    TryEnterCriticalSection(ctx->critical_section);
+}
 LIB_EXPORT void critical_section_leave(critical_section_p ctx) {
     LeaveCriticalSection(ctx->critical_section);
 }
@@ -190,6 +193,7 @@ LIB_EXPORT barrier_p  synch_barrier_init(DWORD threads, DWORD spin_count) {
     barrier->reporter = get_reporter();
     barrier->threads = threads;
     barrier->spin_count = spin_count;
+    barrier->barrier = (LPSYNCHRONIZATION_BARRIER)malloc(sizeof(SYNCHRONIZATION_BARRIER));
     if(!InitializeSynchronizationBarrier(barrier->barrier, threads, spin_count)) {
         report_last(barrier->reporter, "InitializeSynchronizationBarrier");
     }
@@ -236,6 +240,7 @@ LIB_EXPORT void mutex_release(synch_handle_p mutex) {
 LIB_EXPORT srw_lock_p srw_init_lock() {
     srw_lock_p srw = (srw_lock_p)malloc(sizeof(srw_lock_t));
     srw->reporter =get_reporter();
+    srw->lock=(PSRWLOCK)malloc(sizeof(SRWLOCK));
     InitializeSRWLock(srw->lock);
     if(srw->lock == NULL) {
         report_last(srw->reporter, "InitializeSRWLock");
