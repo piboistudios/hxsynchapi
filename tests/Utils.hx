@@ -10,6 +10,7 @@ class Utils {
             true;
         } catch(e:Any) {
             trace('ERROR:' +e);
+            trace(haxe.CallStack.toString(haxe.CallStack.exceptionStack()));
             false;
         };
     

@@ -5,26 +5,31 @@
 */
 
 
-char* print_errors(synch_errors_p errors, bool no_reset) {
+char* print_errors(synch_errors_p errors) {
+    // errors->error_str = (char*)malloc(sizeof(char) * 2048);
 	for (int i = 0; i < errors->num_errors; i++) {
-		sprintf_s(errors->error_str, sizeof(errors->error_str), errors->errors[i]);
-		if (i != errors->num_errors - 1) sprintf_s(errors->error_str, sizeof(errors->error_str), "\r\n");
+		sprintf_s(errors->error_str, 1024, errors->errors[i]);
+		if (i != errors->num_errors - 1) sprintf_s(errors->error_str, 1024, "\r\n");
 	}
-    char ret_val[1024 * 16];
-    sprintf_s(ret_val, sizeof(ret_val), errors->error_str);
+    // char ret_val[1024 * 16];
+    // sprintf_s(ret_val, sizeof(ret_val), errors->error_str);
 //    printf("ERROR: %s\r\n", ret_val);
-    return ret_val;
+    printf("____________________ERROR %s_____________________________________\r\n", errors->error_str);
+    return errors->error_str;
 }
 void report(synch_errors_p errors, char* error) {
     errors->errors[errors->num_errors] = (char*)malloc(1024*sizeof(char));
-    sprintf_s(errors->errors[errors->num_errors], "%s",error);
+    sprintf_s(errors->errors[errors->num_errors], 1024, error);
+    printf("Reporting %s", error);
     errors->num_errors++;
     errors->has_errors=true;
     // print_errors(errors, false);
 }
 void report_last(synch_errors_p errors, char* error) {
+    // printf("REPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRINGREPORTING REPORTING REPORTING REPOTRING")
     char *e = (char*)malloc(sizeof(char) * 1024);
-    sprintf_s(e, "%s Error: %u", error, GetLastError());
+    sprintf_s(e, 1024, "%s Error: %u", error, GetLastError()); 
+    printf("Reporting: %s\r\n\r\n\r\n", e);
     report(errors, e);
 }
 /*
@@ -96,16 +101,27 @@ PSECURITY_ATTRIBUTES get_ipc_sd(synch_errors_p error) {
 synch_errors_p get_reporter() {
     synch_errors_p errors = (synch_errors_p)malloc(sizeof(synch_errors_t));
 	errors->num_errors = 0;
+    errors->has_errors = false;
 	errors->errors = (char**)malloc(sizeof(char) * 1024 * 16);
     return errors;
 }
-
+LIB_EXPORT bool synch_errored(synch_handle_p handle) {
+    return handle->reporter->has_errors;
+}
+LIB_EXPORT char* synch_get_errors(synch_handle_p handle) {
+    char* ret_val = print_errors(handle->reporter);
+    handle->reporter = get_reporter();
+    return ret_val;
+}
 LIB_EXPORT synch_handle_p event_create(char* name) {
     synch_handle_p evt = (synch_handle_p)malloc(sizeof(synch_handle_t));
     evt->reporter = get_reporter();
-    evt->handle = CreateEventA(get_ipc_sd(evt->reporter), true, false, name);
+    evt->handle = CreateEvent(get_ipc_sd(evt->reporter), true, false, name);
     if(evt->handle == NULL){
         report_last(evt->reporter, "CreateEvent");
+        printf("Failed to create event");
+    } else {
+        printf("event created successfully\r\n");
     }
     return evt;
 }
@@ -128,7 +144,9 @@ LIB_EXPORT synch_handle_p event_open(char* name) {
     }
     return evt;
 }
-
+LIB_EXPORT void synch_close_handle(synch_handle_p handle) {
+    CloseHandle(handle->handle);
+}
 LIB_EXPORT void synch_wait_for_handle(synch_handle_p handle, DWORD duration) {
     handle->wait_status = WaitForSingleObject(handle->handle, duration);
     if(handle->wait_status == WAIT_FAILED) {
@@ -147,12 +165,12 @@ LIB_EXPORT void synch_gather_handle(synch_handle_p s, synch_handle_p t) {
         s->gather_started=true;
     }
     const int handles = s->capacity / sizeof(HANDLE);
-    if(s->gather_count + sizeof(HANDLE) >= handles) {
+    if(s->gather_count * sizeof(HANDLE) >= s->capacity) {
         s->capacity = s->capacity + (sizeof(HANDLE) * 16);
         s->gathered = (HANDLE*)realloc(s->gathered, s->capacity);
-        s->gathered[s->gather_count] = t->handle;
-        s->gather_count++;
     }
+    s->gathered[s->gather_count] = t->handle;
+    s->gather_count++;
 }
 LIB_EXPORT void synch_wait_for_many(synch_handle_p handle, DWORD duration, bool wait_all) {
     const HANDLE* handles = handle->gathered;
@@ -160,8 +178,18 @@ LIB_EXPORT void synch_wait_for_many(synch_handle_p handle, DWORD duration, bool 
     if(handle->wait_status == WAIT_FAILED) {
         report_last(handle->reporter, "WaitForMultipleObjects");
     }
+    else {
+        handle->gather_started = false;
+    }
 }
-
+LIB_EXPORT bool critical_section_errored(critical_section_p critical_section) {
+    return critical_section->reporter->has_errors;
+}
+LIB_EXPORT char * critical_section_get_errors(critical_section_p critical_section) {
+    char* ret_val = print_errors(critical_section->reporter);
+    critical_section->reporter = get_reporter();
+    return ret_val;
+}
 
 LIB_EXPORT critical_section_p critical_section_init(DWORD spin_count) {
     critical_section_p section = (critical_section_p)malloc(sizeof(critical_section_t));
@@ -178,7 +206,7 @@ LIB_EXPORT void critical_section_enter(critical_section_p ctx) {
     EnterCriticalSection(ctx->critical_section);
 }
 LIB_EXPORT bool critical_section_try_enter(critical_section_p ctx) {
-    TryEnterCriticalSection(ctx->critical_section);
+    return TryEnterCriticalSection(ctx->critical_section);
 }
 LIB_EXPORT void critical_section_leave(critical_section_p ctx) {
     // printf("Leaving critical section\r\n");
@@ -189,6 +217,14 @@ LIB_EXPORT void critical_section_delete(critical_section_p ctx) {
     DeleteCriticalSection(ctx->critical_section);
 }
 
+LIB_EXPORT bool synch_barrier_errored(barrier_p barrier) {
+    return barrier->reporter->has_errors;
+}
+LIB_EXPORT char* synch_barrier_get_errors(barrier_p barrier) {
+    char* ret_val = print_errors(barrier->reporter);
+    barrier->reporter=get_reporter();
+    return ret_val;
+}
 LIB_EXPORT barrier_p  synch_barrier_init(DWORD threads, DWORD spin_count) {
     barrier_p barrier = (barrier_p)malloc(sizeof(barrier_t));
     barrier->reporter = get_reporter();
@@ -200,13 +236,12 @@ LIB_EXPORT barrier_p  synch_barrier_init(DWORD threads, DWORD spin_count) {
     }
     return barrier;
 }
-LIB_EXPORT void synch_barrier_enter(barrier_p barrier, bool spin_only, bool block_only) {
+LIB_EXPORT bool synch_barrier_enter(barrier_p barrier, bool spin_only, bool block_only) {
     DWORD flags;
     if(spin_only) flags = SYNCHRONIZATION_BARRIER_FLAGS_SPIN_ONLY;
     else if(block_only) flags = SYNCHRONIZATION_BARRIER_FLAGS_BLOCK_ONLY;
-    if(!EnterSynchronizationBarrier(barrier->barrier, flags)) {
-        report_last(barrier->reporter, "EnterSynchronizationBarrier");
-    }
+    return EnterSynchronizationBarrier(barrier->barrier, flags);
+    
 }
 
 LIB_EXPORT void synch_barrier_delete(barrier_p barrier) {
@@ -237,7 +272,15 @@ LIB_EXPORT void mutex_release(synch_handle_p mutex) {
         report_last(mutex->reporter, "ReleaseMutex");
     }
 }
+LIB_EXPORT bool srw_errored(srw_lock_p srw) {
+    return srw->reporter->has_errors;
+}
 
+LIB_EXPORT char* srw_get_errors(srw_lock_p srw) {
+    char* ret_val = print_errors(srw);
+    srw->reporter = get_reporter();
+    return ret_val;
+}
 LIB_EXPORT srw_lock_p srw_init_lock() {
     srw_lock_p srw = (srw_lock_p)malloc(sizeof(srw_lock_t));
     srw->reporter =get_reporter();
