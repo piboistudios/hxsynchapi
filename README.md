@@ -10,8 +10,8 @@ TODO:
 - [x] - Mutexes (needs working test.. need some shared I/O/IPC message passing)
 - [x] - Critical Sections (needs try access)
 - [x] - SRW Locks
-- [ ] - Synchronization Barriers (needs test)
+- [x] - Synchronization Barriers (needs test)
 - [ ] - Maybe Interlocked Variables?
 - [ ] - Maybe Interlocked SLists?
-- [ ] - Expose User Friendly Haxe API
+- [x] - Expose User Friendly Haxe API
 - [x] - Build automation
