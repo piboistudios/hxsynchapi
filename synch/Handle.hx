@@ -11,8 +11,15 @@ class Handle {
 		this.handle = h;
 	}
 
+	public var closed(default, null):Bool;
+
 	public function close() {
-		this.handle.synch_close_handle();
+        final ret = !closed;
+		if (!closed) {
+			this.handle.synch_close_handle();
+			closed = true;
+        }
+        return ret;
 	}
 
 	function checkErrors() {
@@ -68,8 +75,8 @@ class HandleTools {
 
 	public static function checkErrors(handle:synch.SynchronizationHandle) {
 		if (handle.synch_errored()) {
-            trace('SYNCH ERRORED: ${handle.synch_errored()}');
-            throw handle.synch_get_errors().asErrorMsg();
-        }
+			trace('SYNCH ERRORED: ${handle.synch_errored()}');
+			throw handle.synch_get_errors().asErrorMsg();
+		}
 	}
 }

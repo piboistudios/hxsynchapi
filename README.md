@@ -15,3 +15,24 @@ TODO:
 - [ ] - Maybe Interlocked SLists?
 - [x] - Expose User Friendly Haxe API
 - [x] - Build automation
+
+## Events
+
+```haxe
+final FOREVER = -1;
+var event = synch.SynchLib.create('my-event');
+var then = function() {};
+sys.thread.Thread.create(() -> {
+    function beginWork() {
+        // do some work here
+    }
+    while(event.wait(FOREVER)) {
+        beginWork();
+        then();
+    }
+});
+inline function runBackgroundTask(_then:Void->Void) {
+    then = _then;
+    event.signal(true);
+}
+```

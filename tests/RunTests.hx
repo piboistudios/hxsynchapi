@@ -79,7 +79,43 @@ class BasicTest {
 			event.wait(10 * 1000);
 		}, 1000, 1000);
 	}
-
+	public function testBackgroundTask() {
+		var counter = 0;
+		final callbacks:Array<Void->Void> = [];
+		var task = Event.create('task$eventId');
+		var ready = Event.create('ready$eventId');
+		var kill = false;
+		sys.thread.Thread.create(() -> {
+			inline function backgroundJob() {
+				trace('running background job')
+			}
+			while(!kill) {
+				ready.signal();
+				task.wait(-1);
+				ready.reset();
+				backgroundJob();
+				if(callbacks.length != 0) callbacks.shift()();
+			}
+			ready.close();
+			task.close();
+		});
+		inline function queueTask(t:Void->Void) {
+			callbacks.push(t);
+			task.signal();
+			ready.wait(-1);
+			task.reset();
+		}
+		for(i in 0...10) 
+			queueTask(() -> {
+				counter++;
+				asserts.assert(counter == i + 1);
+			});
+		queueTask(() -> {
+			asserts.done();
+			kill = true;
+		});
+		return asserts;
+	}
 	var mutex:synch.Mutex;	
 	var mutexId:String;
 
@@ -103,19 +139,25 @@ class BasicTest {
 		}, 1000, 1000);
 	}
 
-	var criticalSection:synch.CriticalSection<{asserts:tink.unit.AssertionBuffer, data:String, accessCount:Int}>;
-	var asserts = new AssertionBuffer();
-
+	var criticalSection:synch.CriticalSection<{data:String, accessCount:Int}>;
+	var asserts:AssertionBuffer;
+	@:setup
+	public function setup() {
+		asserts = new AssertionBuffer();
+		return Noise;
+	}
 	public function testCriticalSectionCreation() {
 		return assert(attempt({
-			criticalSection = CriticalSection.create({accessCount: 0, asserts: asserts, data: "initial state"});
+			criticalSection = CriticalSection.create({accessCount: 0, data: "initial state"});
 		}));
 	}
 
-	var numThreads = 20;
-
+	var numThreads = 10;
+	@:exclude
 	@:timeout(30000)
 	public function testCriticalSection() {
+		var done = Event.create('done$eventId');
+		var data = '';
 		for (i in 0...numThreads) {
 			// Sys.sleep((i + 1)/1000);
 			final _i = i;
@@ -127,48 +169,41 @@ class BasicTest {
 					state.accessCount++;
 					state.data = 'changed ${state.accessCount}x';
 					if (state.accessCount == numThreads) {
-						asserts.assert(state.data == 'changed ${numThreads}x');
-						asserts.done();
+						data = state.data;	
+						done.signal();
 					}
 				});
 			});
 		}
-		return asserts;
+		done.wait(-1);
+		done.close();
+		asserts.assert(data == 'changed ${numThreads}x');
+		return asserts.done();
 	}
 
 	var barrier:synch.SynchBarrier;
 
 	public function testSynchBarrierCreation() {
 		return assert(attempt({
-			asserts = new AssertionBuffer();
-			barrier = synch.SynchBarrier.create(numThreads, 8000);
-			criticalSection.close();
-			criticalSection = CriticalSection.create({accessCount: 0, asserts: asserts, data: "initial state"});
+			barrier = synch.SynchBarrier.create(numThreads, 4000);
 		}));
 	}
 
 	public function testSynchBarrier() {
+		var reachedBarrier = Event.create('barrier$eventId');
 		var counter = 0;
 		for (i in 0...numThreads)
 			sys.thread.Thread.create(() -> {
+
 				barrier.enter(last -> {
-					criticalSection.enter(state -> {
-						state.accessCount++;
-						counter++;
-						if(last) {
-							trace('LAST: ${state.accessCount}');
-						}
-						if (state.accessCount == numThreads) {
-							state.asserts.assert(counter == state.accessCount);
-							state.asserts.done();
-						}
-					});
+					reachedBarrier.signal();
 				});
 			});
-		criticalSection.enter(state -> {
-			asserts = state.asserts;
-		});
-		return asserts;
+		reachedBarrier.wait(-1);
+		barrier.close();
+		asserts.assert(true, 'barrier reached');
+		reachedBarrier.close();
+		return asserts.done();
 	}
 	#end
 }

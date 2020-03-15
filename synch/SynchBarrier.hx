@@ -4,9 +4,10 @@ using synch.ErrorTools;
 
 class SynchBarrier {
 	var barrier:SynchronizationBarrier;
-
-	function new(barrier) {
+	public var capacity(default, null):Int;
+	function new(barrier, capacity) {
 		this.barrier = barrier;
+		this.capacity = capacity;
 	}
 
 	public static function check(barrier:SynchronizationBarrier) {
@@ -17,18 +18,19 @@ class SynchBarrier {
 	public function checkErrors() {
 		check(this.barrier);
 	}
-
+	
 	public static function create(capacity = 1, spinCount = 4000) {
 		final barrier = synch.SynchLib.synch_barrier_init(capacity, spinCount);
 		SynchBarrier.check(barrier);
-		return new SynchBarrier(barrier);
+		return new SynchBarrier(barrier, capacity);
 	}
 
 	function doEnter(spinOnly = false, blockOnly = false) {
-		return this.barrier.synch_barrier_enter(spinOnly, blockOnly);
+		final ret = this.barrier.synch_barrier_enter(spinOnly, blockOnly);
+		return ret;
 	}
 
-	public function enter(func:Null<Bool->Void> = null, spin = false, block = false) {
+	public function enter(func:Null<Bool->Void> = null, spin = true, block = false) {
 		final ret = doEnter(spin, block);
 		if (func != null)
 			func(ret);
