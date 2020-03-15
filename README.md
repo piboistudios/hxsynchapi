@@ -15,24 +15,40 @@ TODO:
 - [ ] - Maybe Interlocked SLists?
 - [x] - Expose User Friendly Haxe API
 - [x] - Build automation
+- [ ] - Add usage examples
 
 ## Events
 
 ```haxe
 final FOREVER = -1;
-var event = synch.SynchLib.create('my-event');
-var then = function() {};
+final callbacks:Array<Void->Void> = [];
+var task = Event.create('task$eventId');
+var ready = Event.create('ready$eventId');
+var kill = false;
 sys.thread.Thread.create(() -> {
-    function beginWork() {
-        // do some work here
+    inline function backgroundJob() {
+        trace('running background job');
     }
-    while(event.wait(FOREVER)) {
-        beginWork();
-        then();
+    while(!kill) {
+        ready.signal();
+        task.wait(FOREVER);
+        ready.reset();
+        backgroundJob();
+        if(callbacks.length != 0) callbacks.shift()();
     }
+    ready.close();
+    task.close();
 });
-inline function runBackgroundTask(_then:Void->Void) {
-    then = _then;
-    event.signal(true);
+inline function queueTask(t:Void->Void) {
+    callbacks.push(t);
+    task.signal();
+    ready.wait(FOREVER);
+    task.reset();
 }
+inline function kill() {
+    kill = true;
+}
+queueTask(() -> {
+    trace('foo');
+});
 ```

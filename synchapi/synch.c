@@ -23,7 +23,7 @@ void report(synch_errors_p errors, char* error) {
 }
 void report_last(synch_errors_p errors, char* error) {
     char *e = (char*)malloc(sizeof(char) * 1024);
-    sprintf_s(e, 1024, "%s Error: 0x%x", error, GetLastError()); 
+    FormatMessage(FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY| FORMAT_MESSAGE_FROM_SYSTEM, "%s Error: 0x%x", 0, 0, e, 1024, error, GetLastError());
     report(errors, e);
 }
 /*

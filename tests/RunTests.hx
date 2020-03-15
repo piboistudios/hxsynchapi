@@ -87,7 +87,7 @@ class BasicTest {
 		var kill = false;
 		sys.thread.Thread.create(() -> {
 			inline function backgroundJob() {
-				trace('running background job')
+				trace('running background job');
 			}
 			while(!kill) {
 				ready.signal();
