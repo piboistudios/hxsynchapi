@@ -4,7 +4,24 @@
 * Errors
 */
 
+char* GetLastErrorAsString()
+{
+    //Get the error message, if any.
+    DWORD errorMessageID = GetLastError();
+    if(errorMessageID == 0)
+        return ""; //No error message has been recorded
 
+    LPSTR messageBuffer = (LPSTR)malloc(1024 * sizeof(char));
+    size_t size = FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                 NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+
+    char message[1024];
+    sprintf_s(message,1024, messageBuffer);
+    //Free the buffer.
+    free(messageBuffer);
+
+    return message;
+}
 char* print_errors(synch_errors_p errors) {
     // errors->error_str = (char*)malloc(sizeof(char) * 2048);
 	for (int i = 0; i < errors->num_errors; i++) {
@@ -23,7 +40,7 @@ void report(synch_errors_p errors, char* error) {
 }
 void report_last(synch_errors_p errors, char* error) {
     char *e = (char*)malloc(sizeof(char) * 1024);
-    FormatMessage(FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY| FORMAT_MESSAGE_FROM_SYSTEM, "%s Error: 0x%x", 0, 0, e, 1024, error, GetLastError());
+    sprintf_s(e, 1024, "%s Error: %s", error, GetLastErrorAsString()); 
     report(errors, e);
 }
 /*
@@ -129,7 +146,8 @@ LIB_EXPORT void event_reset(synch_handle_p handle) {
 
 LIB_EXPORT synch_handle_p event_open(char* name) {
     synch_handle_p evt = (synch_handle_p)malloc(sizeof(synch_handle_t));
-    evt->handle = OpenEventA(SYNCHRONIZE, true, name);
+    evt->reporter = get_reporter();
+    evt->handle = OpenEvent(SYNCHRONIZE, true, name);
     if(evt->handle == NULL) {
         report_last(evt->reporter, "OpenEvent");
     }

@@ -205,5 +205,15 @@ class BasicTest {
 		reachedBarrier.close();
 		return asserts.done();
 	}
+	public function testEventError() {
+		var errorMsg = "";
+		try {
+			Event.open('non-existent-event');
+			errorMsg = null;
+		} catch(e:Dynamic) {
+			errorMsg = e;
+		}
+		return assert(errorMsg != null);
+	}
 	#end
 }
